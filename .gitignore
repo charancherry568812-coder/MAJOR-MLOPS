@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+.matplotlib_cache/
+
+# Database
+*.db
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Runtime & PIDs
+*.pid
+.backend.pid
+.frontend.pid
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Storage
+model_storage/
+report_storage/
+dataset_storage/
+data/
+mlruns/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/

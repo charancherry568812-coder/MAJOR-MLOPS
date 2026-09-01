@@ -1,0 +1,155 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fedbank-mlops
+  labels:
+    environment: production
+    app.kubernetes.io/name: fedbank-mlops
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fedbank-config
+  namespace: fedbank-mlops
+data:
+  DATABASE_URL: "postgresql://fedbank:fedbank_secure_db_pass@postgres:5432/fedbank_mlops"
+  REDIS_URL: "redis://redis:6379/0"
+  MINIO_ENDPOINT: "minio:9000"
+  FLOWER_SERVER_ADDRESS: "0.0.0.0:8080"
+  MLFLOW_TRACKING_URI: "http://mlflow:5000"
+  CORS_ORIGINS: "http://localhost:3000,http://fedbank.local"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fedbank-secrets
+  namespace: fedbank-mlops
+type: Opaque
+stringData:
+  SECRET_KEY: "fedbank-production-jwt-secret-key-9823471092834"
+  MINIO_ACCESS_KEY: "minioadmin"
+  MINIO_SECRET_KEY: "minioadmin"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fedbank-backend
+  namespace: fedbank-mlops
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fedbank-backend
+  template:
+    metadata:
+      labels:
+        app: fedbank-backend
+    spec:
+      containers:
+        - name: backend
+          image: fedbank/backend:latest
+          ports:
+            - containerPort: 8000
+              name: http
+            - containerPort: 8080
+              name: grpc-fl
+          envFrom:
+            - configMapRef:
+                name: fedbank-config
+            - secretRef:
+                name: fedbank-secrets
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fedbank-backend-service
+  namespace: fedbank-mlops
+spec:
+  selector:
+    app: fedbank-backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+    - name: grpc-fl
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fedbank-frontend
+  namespace: fedbank-mlops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fedbank-frontend
+  template:
+    metadata:
+      labels:
+        app: fedbank-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: fedbank/frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fedbank-frontend-service
+  namespace: fedbank-mlops
+spec:
+  selector:
+    app: fedbank-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fedbank-backend-hpa
+  namespace: fedbank-mlops
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: fedbank-backend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75

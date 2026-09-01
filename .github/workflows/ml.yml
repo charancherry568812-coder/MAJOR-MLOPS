@@ -1,0 +1,26 @@
+name: Federated ML & Model Quality Evaluation
+
+on:
+  push:
+    paths:
+      - 'backend/app/ml/**'
+      - 'backend/app/federated/**'
+      - 'backend/app/services/drift_service.py'
+  workflow_dispatch:
+
+jobs:
+  ml-eval:
+    name: Train Baseline & Simulate Federated Rounds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt pytest httpx
+      - name: Run Federated Simulation Test
+        run: |
+          PYTHONPATH=backend pytest tests/test_federated.py tests/test_ml_pipeline.py tests/test_drift_async_jobs.py -v
