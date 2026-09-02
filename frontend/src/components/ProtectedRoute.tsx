@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore'
 export default function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { isAuthenticated, user } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (roles && user && !roles.includes(user.role.name)) return <Navigate to="/dashboard" replace />
+  const roleName = typeof user?.role === 'object' ? (user?.role as any)?.name : user?.role
+  if (roles && roleName && !roles.includes(roleName)) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
